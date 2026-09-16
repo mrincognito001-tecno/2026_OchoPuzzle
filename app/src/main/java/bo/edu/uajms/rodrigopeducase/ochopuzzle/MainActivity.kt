@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import kotlin.math.abs
+import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
 
@@ -16,8 +16,12 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var Tablero: Array<Array<String>>
 
-    private val rows = 4
-    private val cols = 4
+    private val estadoFinal = arrayOf(
+        arrayOf("1", "2", "3", "4"),
+        arrayOf("12", "13", "14", "5"),
+        arrayOf("11", "0", "15", "6"),
+        arrayOf("10", "9", "8", "7")
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,82 +54,124 @@ class MainActivity : AppCompatActivity() {
         BTNDisorder = findViewById(R.id.BTNShuffle)
         BTNVerify = findViewById(R.id.BTNVerify)
 
-        Tablero = arrayOf(
-            arrayOf("1", "2", "3", "4"),
-            arrayOf("5", "6", "7", "8"),
-            arrayOf("9", "10", "11", "12"),
-            arrayOf("13", "14", "15", "0")
+        restaurarMatriz()
+        mostrarMatriz()
+
+        BTNButtons.forEachIndexed { posicion, boton ->
+            boton.setOnClickListener {
+                moverFicha(posicion)
+            }
+        }
+
+        BTNRestart.setOnClickListener {
+            restaurarJuego()
+        }
+
+        BTNDisorder.setOnClickListener {
+            mezclarJuego()
+        }
+
+        BTNVerify.setOnClickListener {
+            comprobarJuego()
+        }
+    }
+
+    private fun restaurarMatriz() {
+        Tablero = Array(4) { fila ->
+            Array(4) { columna ->
+                estadoFinal[fila][columna]
+            }
+        }
+    }
+
+    private fun mostrarMatriz() {
+        BTNButtons.forEachIndexed { posicion, boton ->
+            val fila = posicion / 4
+            val columna = posicion % 4
+            val valor = Tablero[fila][columna]
+
+            boton.text = if (valor == "0") {
+                ""
+            } else {
+                valor
+            }
+        }
+    }
+
+    private fun moverFicha(posicion: Int) {
+        val fila = posicion / 4
+        val columna = posicion % 4
+
+        val posicionesVecinas = arrayOf(
+            Pair(fila - 1, columna),
+            Pair(fila + 1, columna),
+            Pair(fila, columna - 1),
+            Pair(fila, columna + 1)
         )
 
-        updateBoard()
+        for (vecino in posicionesVecinas) {
+            val filaVecina = vecino.first
+            val columnaVecina = vecino.second
 
-        for (i in BTNButtons.indices) {
-            val row = i / cols
-            val col = i % cols
+            if (
+                filaVecina in 0..3 &&
+                columnaVecina in 0..3 &&
+                Tablero[filaVecina][columnaVecina] == "0"
+            ) {
+                val ficha = Tablero[fila][columna]
 
-            BTNButtons[i].setOnClickListener {
-                moveTile(row, col)
+                Tablero[fila][columna] = "0"
+                Tablero[filaVecina][columnaVecina] = ficha
+
+                mostrarMatriz()
+                return
             }
         }
     }
 
-    private fun updateBoard() {
-        for (i in BTNButtons.indices) {
-            val row = i / cols
-            val col = i % cols
-            val value = Tablero[row][col]
-
-            if (value == "0") {
-                BTNButtons[i].text = ""
-            } else {
-                BTNButtons[i].text = value
-            }
-        }
+    private fun restaurarJuego() {
+        restaurarMatriz()
+        mostrarMatriz()
+        TXVMessage.text = "Juego Reiniciado"
     }
 
-    private fun moveTile(row: Int, col: Int) {
-        val blankPosition = findBlank()
-        val blankRow = blankPosition.first
-        val blankCol = blankPosition.second
+    private fun mezclarJuego() {
+        val elementos = mutableListOf<String>()
 
-        val distance =
-            abs(row - blankRow) + abs(col - blankCol)
-
-        if (distance == 1) {
-            swapTiles(
-                row,
-                col,
-                blankRow,
-                blankCol
-            )
-
-            updateBoard()
-        }
-    }
-
-    private fun findBlank(): Pair<Int, Int> {
-        for (i in 0 until rows) {
-            for (j in 0 until cols) {
-                if (Tablero[i][j] == "0") {
-                    return Pair(i, j)
-                }
+        for (fila in Tablero) {
+            for (valor in fila) {
+                elementos.add(valor)
             }
         }
 
-        return Pair(rows - 1, cols - 1)
+        for (posicion in elementos.lastIndex downTo 1) {
+            val posicionAleatoria = Random.nextInt(posicion + 1)
+
+            val auxiliar = elementos[posicion]
+            elementos[posicion] = elementos[posicionAleatoria]
+            elementos[posicionAleatoria] = auxiliar
+        }
+
+        var posicion = 0
+
+        for (fila in 0..3) {
+            for (columna in 0..3) {
+                Tablero[fila][columna] = elementos[posicion]
+                posicion++
+            }
+        }
+
+        mostrarMatriz()
+        TXVMessage.text = "Completado"
     }
 
-    private fun swapTiles(
-        firstRow: Int,
-        firstCol: Int,
-        secondRow: Int,
-        secondCol: Int
-    ) {
-        val value = Tablero[firstRow][firstCol]
-
-        Tablero[firstRow][firstCol] =
-            Tablero[secondRow][secondCol]
-
-        Tablero[secondRow][secondCol] = value
+    private fun comprobarJuego() {
+        TXVMessage.text = if (Tablero.contentDeepEquals(estadoFinal)) {
+            "Juego Ordenado"
+        } else {
+            "Juego Desordenado"
+        }
     }
 }
+
+
